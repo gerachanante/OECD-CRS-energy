@@ -1,5 +1,7 @@
 library(readr)
 library(dplyr)
+library(lubridate)
+library(vroom)
 
 # Define the source folder and output file path. Replace "gescamilla" with your username - you must have access to the Stats SharePoint.
 sourceFolderPath <- "C:/Users/gescamilla/International Renewable Energy Agency - IRENA/Statistics - Documents/P_Data/Investment and Costs statistics/01.Investments/01.Data/01.OECD/02.Data Downloads"
@@ -14,8 +16,12 @@ desiredColumns <- c("Year", "DonorCode", "DonorName", "AgencyCode", "ProjectNumb
 
 # Function to read and process each file
 process_file <- function(file_path) {
-  # Read the file
+
+  # Read the file and check for parsing issues
   df <- read_delim(file_path, delim = "|", escape_double = FALSE, trim_ws = TRUE, col_names = TRUE)
+  
+  # Check for parsing issues
+  data_problems <- problems(df)
   
   # Select desired columns
   df <- df %>% select(all_of(desiredColumns))
@@ -23,16 +29,13 @@ process_file <- function(file_path) {
   # Filter out rows where USD_Commitment is 0 or NA
   df <- df %>% filter(USD_Commitment != 0 & !is.na(USD_Commitment))
   
-  # Replace NA values with empty strings in all columns
-  df <- df %>% mutate(across(everything(), ~ifelse(is.na(.), "", .)))
-  
   # Filter out private investments
   df <- df %>% filter(FlowCode != 30)
   
   # Filter for energy technologies
   df <- df %>% filter((PurposeCode >= 23210 & PurposeCode <= 23290) | #RE generation 
                         (PurposeCode >= 23310 & PurposeCode <= 23390) | #NRE generation
-                        PurposeCode == 23410 | PurposeCode == 23510 |#hybrid & nuclear,  
+                        PurposeCode == 23410 | PurposeCode == 23510 | #hybrid & nuclear  
                         PurposeCode == 23631) #mini-grids
   
   return(df)
